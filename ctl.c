@@ -21,7 +21,13 @@ static void usage(void) {
 static long handle_call_done(VarlinkConnection *connection, const char *error,
 		VarlinkObject *parameters, uint64_t flags, void *userdata) {
 	if (error != NULL) {
-		fprintf(stderr, "Error: %s\n", error);
+		if (strcmp(error, "fr.emersion.kanshi.ProfileNotFound") == 0) {
+			fprintf(stderr, "Profile not found\n");
+		} else if (strcmp(error, "fr.emersion.kanshi.ProfileNotMatched") == 0) {
+			fprintf(stderr, "Profile does not match the current output configuration\n");
+		} else {
+			fprintf(stderr, "Error: %s\n", error);
+		}
 		exit(EXIT_FAILURE);
 	}
 	return varlink_connection_close(connection);
