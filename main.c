@@ -495,6 +495,10 @@ static bool try_apply_profiles(struct kanshi_state *state) {
 	assert(wl_list_length(&state->heads) <= HEADS_MAX);
 	// matches[i] gives the kanshi_profile_output for the i-th head
 	struct kanshi_profile_output *matches[HEADS_MAX];
+	if (state->current_profile != NULL &&
+			match_profile(state, state->current_profile, matches)) {
+		return true; // keep the current profile if it still matches
+	}
 	struct kanshi_profile *profile = match(state, matches);
 	if (profile != NULL) {
 		apply_profile(state, profile, matches);
