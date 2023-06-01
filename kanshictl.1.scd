@@ -15,7 +15,8 @@ kanshictl - control the kanshi daemon remotely
 
 # COMMANDS
 
-reload - reload the config file
+*reload*
+	Reload the config file.
 
 # AUTHORS
 
