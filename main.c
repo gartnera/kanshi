@@ -131,25 +131,24 @@ static void exec_command(char *cmd) {
 	}
 }
 
-static void execute_profile_commands(struct kanshi_profile *profile) {
-	struct kanshi_profile_command *command;
-	wl_list_for_each(command, &profile->commands, link) {
-		fprintf(stderr, "Running command '%s'\n", command->command);
-		exec_command(command->command);
-	}
-}
-
 static void config_handle_succeeded(void *data,
 		struct zwlr_output_configuration_v1 *config) {
 	struct kanshi_pending_profile *pending = data;
 	zwlr_output_configuration_v1_destroy(config);
-	fprintf(stderr, "running commands for configuration '%s'\n", pending->profile->name);
-	execute_profile_commands(pending->profile);
-	fprintf(stderr, "configuration for profile '%s' applied\n",
-			pending->profile->name);
-	pending->state->current_profile = pending->profile;
-	if (pending->profile == pending->state->pending_profile) {
-		pending->state->pending_profile = NULL;
+
+	struct kanshi_state *state = pending->state;
+	struct kanshi_profile *profile = pending->profile;
+
+	struct kanshi_profile_command *command;
+	wl_list_for_each(command, &profile->commands, link) {
+		fprintf(stderr, "running command '%s'\n", command->command);
+		exec_command(command->command);
+	}
+
+	fprintf(stderr, "configuration for profile '%s' applied\n", profile->name);
+	state->current_profile = profile;
+	if (profile == state->pending_profile) {
+		state->pending_profile = NULL;
 	}
 	free(pending);
 }
