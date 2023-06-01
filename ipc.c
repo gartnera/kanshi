@@ -2,10 +2,23 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <varlink.h>
 
+#include "config.h"
 #include "kanshi.h"
 #include "ipc.h"
+
+static long reply_error(VarlinkCall *call, const char *name) {
+	VarlinkObject *params = NULL;
+	long ret = varlink_object_new(&params);
+	if (ret < 0) {
+		return ret;
+	}
+	ret = varlink_call_reply_error(call, name, params);
+	varlink_object_unref(params);
+	return ret;
+}
 
 static void reload_config_done(void *data, struct wl_callback *callback,
 		uint32_t serial) {
@@ -24,6 +37,37 @@ static long handle_reload(VarlinkService *service, VarlinkCall *call,
 	kanshi_reload_config(state);
 	// this only ensures that the server has received the configuration request,
 	// the server is free to wait an arbitrary amount of time before applying the configuration
+	// TODO: use the wlr-output-management event instead
+	struct wl_callback *callback = wl_display_sync(state->display);
+	wl_callback_add_listener(callback, &reload_config_listener, call);
+	return 0;
+}
+
+static long handle_switch(VarlinkService *service, VarlinkCall *call,
+		VarlinkObject *parameters, uint64_t flags, void *userdata) {
+	struct kanshi_state *state = userdata;
+
+	const char *profile_name;
+	if (varlink_object_get_string(parameters, "profile", &profile_name) < 0) {
+		return varlink_call_reply_invalid_parameter(call, "profile");
+	}
+
+	struct kanshi_profile *profile;
+	bool found = false;
+	wl_list_for_each(profile, &state->config->profiles, link) {
+		if (strcmp(profile->name, profile_name) == 0) {
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		return reply_error(call, "fr.emersion.kanshi.ProfileNotFound");
+	}
+
+	if (!kanshi_switch(state, profile)) {
+		return reply_error(call, "fr.emersion.kanshi.ProfileNotMatched");
+	}
+
 	// TODO: use the wlr-output-management event instead
 	struct wl_callback *callback = wl_display_sync(state->display);
 	wl_callback_add_listener(callback, &reload_config_listener, call);
@@ -62,10 +106,14 @@ int kanshi_init_ipc(struct kanshi_state *state, int listen_fd) {
 	}
 
 	const char *interface = "interface fr.emersion.kanshi\n"
-		"method Reload() -> ()";
+		"method Reload() -> ()\n"
+		"method Switch(profile: string) -> ()\n"
+		"error ProfileNotFound()\n"
+		"error ProfileNotMatched()\n";
 
 	long result = varlink_service_add_interface(service, interface,
 			"Reload", handle_reload, state,
+			"Switch", handle_switch, state,
 			NULL);
 	if (result != 0) {
 		fprintf(stderr, "varlink_service_add_interface failed: %s\n",

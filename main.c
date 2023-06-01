@@ -20,7 +20,7 @@
 
 #define HEADS_MAX 64
 
-static bool try_apply_profiles(struct kanshi_state *state);
+static bool match_and_apply(struct kanshi_state *state);
 
 static bool match_profile_output(struct kanshi_profile_output *output,
 		struct kanshi_head *head) {
@@ -178,7 +178,7 @@ static void config_handle_cancelled(void *data,
 	if (pending->serial != pending->state->serial) {
 		// We've already received a new serial, try re-applying the profile
 		// immediately
-		try_apply_profiles(pending->state);
+		match_and_apply(pending->state);
 	}
 	free(pending);
 }
@@ -491,7 +491,7 @@ static void output_manager_handle_head(void *data,
 	zwlr_output_head_v1_add_listener(wlr_head, &head_listener, head);
 }
 
-static bool try_apply_profiles(struct kanshi_state *state) {
+static bool match_and_apply(struct kanshi_state *state) {
 	assert(wl_list_length(&state->heads) <= HEADS_MAX);
 	// matches[i] gives the kanshi_profile_output for the i-th head
 	struct kanshi_profile_output *matches[HEADS_MAX];
@@ -508,12 +508,21 @@ static bool try_apply_profiles(struct kanshi_state *state) {
 	return false;
 }
 
+bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile) {
+	struct kanshi_profile_output *matches[HEADS_MAX];
+	if (!match_profile(state, profile, matches)) {
+		return false;
+	}
+
+	apply_profile(state, profile, matches);
+	return true;
+}
+
 static void output_manager_handle_done(void *data,
 		struct zwlr_output_manager_v1 *manager, uint32_t serial) {
 	struct kanshi_state *state = data;
 	state->serial = serial;
-
-	try_apply_profiles(state);
+	match_and_apply(state);
 }
 
 static void output_manager_handle_finished(void *data,
@@ -605,7 +614,7 @@ bool kanshi_reload_config(struct kanshi_state *state) {
 		state->config = config;
 		state->pending_profile = NULL;
 		state->current_profile = NULL;
-		return try_apply_profiles(state);
+		return match_and_apply(state);
 	}
 	return false;
 }

@@ -18,6 +18,9 @@ kanshictl - control the kanshi daemon remotely
 *reload*
 	Reload the config file.
 
+*switch* <profile>
+	Switch to a different profile.
+
 # AUTHORS
 
 Maintained by Simon Ser <contact@emersion.fr>, who is assisted by other

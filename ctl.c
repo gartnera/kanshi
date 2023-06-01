@@ -10,15 +10,20 @@
 
 #include "ipc.h"
 
-static void usage(const char *progname) {
-	fprintf(stderr, "Usage: %s [command]\n"
-			"Accepted commands:\n"
-			"  reload - reload the config file\n",
-			progname);
+static void usage(void) {
+	fprintf(stderr, "Usage: kanshictl [command]\n"
+		"\n"
+		"Commands:\n"
+		"  reload            Reload the configuration file\n"
+		"  switch <profile>  Switch to another profile");
 }
 
-static long reload_callback(VarlinkConnection *connection, const char *error,
+static long handle_call_done(VarlinkConnection *connection, const char *error,
 		VarlinkObject *parameters, uint64_t flags, void *userdata) {
+	if (error != NULL) {
+		fprintf(stderr, "Error: %s\n", error);
+		exit(EXIT_FAILURE);
+	}
 	return varlink_connection_close(connection);
 }
 
@@ -56,11 +61,11 @@ int wait_for_event(VarlinkConnection *connection) {
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
-		usage(argv[0]);
+		usage();
 		return EXIT_FAILURE;
 	}
 	if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
-		usage(argv[0]);
+		usage();
 		return EXIT_SUCCESS;
 	}
 
@@ -74,17 +79,35 @@ int main(int argc, char *argv[]) {
 				"Is the kanshi daemon running?\n", address);
 		return EXIT_FAILURE;
 	}
-	if (strcmp(argv[1], "reload") == 0) {
-		long result = varlink_connection_call(connection,
-				"fr.emersion.kanshi.Reload", NULL, 0, reload_callback, NULL);
-		if (result != 0) {
-			fprintf(stderr, "varlink_connection_call failed: %s\n",
-					varlink_error_string(-result));
+
+	const char *command = argv[1];
+	long ret;
+	if (strcmp(command, "reload") == 0) {
+		ret = varlink_connection_call(connection,
+			"fr.emersion.kanshi.Reload", NULL, 0, handle_call_done, NULL);
+	} else if (strcmp(command, "switch") == 0) {
+		if (argc < 3) {
+			usage();
 			return EXIT_FAILURE;
 		}
-		return wait_for_event(connection);
+		const char *profile = argv[2];
+
+		VarlinkObject *params = NULL;
+		varlink_object_new(&params);
+		varlink_object_set_string(params, "profile", profile);
+		ret = varlink_connection_call(connection,
+			"fr.emersion.kanshi.Switch", params, 0, handle_call_done, NULL);
+		varlink_object_unref(params);
+	} else {
+		fprintf(stderr, "invalid command: %s\n", argv[1]);
+		usage();
+		return EXIT_FAILURE;
 	}
-	fprintf(stderr, "invalid command: %s\n", argv[1]);
-	usage(argv[0]);
-	return EXIT_FAILURE;
+	if (ret != 0) {
+		fprintf(stderr, "varlink_connection_call failed: %s\n",
+			varlink_error_string(-ret));
+		return EXIT_FAILURE;
+	}
+
+	return wait_for_event(connection);
 }
