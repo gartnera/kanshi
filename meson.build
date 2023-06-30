@@ -83,3 +83,8 @@ if varlink.found()
 endif
 
 subdir('doc')
+
+summary({
+	'Man pages': scdoc.found(),
+	'IPC': varlink.found(),
+}, bool_yn: true)
