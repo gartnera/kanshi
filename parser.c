@@ -289,6 +289,17 @@ static bool parse_transform(enum wl_output_transform *dst, const char *str) {
 	return true;
 }
 
+static bool parse_bool(bool *dst, const char *str) {
+	if (strcmp(str, "on") == 0) {
+		*dst = true;
+	} else if (strcmp(str, "off") == 0) {
+		*dst = false;
+	} else {
+		return false;
+	}
+	return true;
+}
+
 static struct kanshi_profile_output *parse_profile_output(
 		struct kanshi_parser *parser) {
 	struct kanshi_profile_output *output = calloc(1, sizeof(*output));
@@ -332,6 +343,12 @@ static struct kanshi_profile_output *parse_profile_output(
 						return NULL;
 					}
 					break;
+				case KANSHI_OUTPUT_ADAPTIVE_SYNC:
+					if (!parse_bool(&output->adaptive_sync, value)) {
+						fprintf(stderr, "invalid output adaptive_sync\n");
+						return NULL;
+					}
+					break;
 				default:
 					abort();
 				}
@@ -356,6 +373,8 @@ static struct kanshi_profile_output *parse_profile_output(
 					key = KANSHI_OUTPUT_SCALE;
 				} else if (strcmp(key_str, "transform") == 0) {
 					key = KANSHI_OUTPUT_TRANSFORM;
+				} else if (strcmp(key_str, "adaptive_sync") == 0) {
+					key = KANSHI_OUTPUT_ADAPTIVE_SYNC;
 				} else {
 					fprintf(stderr,
 						"unknown directive '%s' in profile output '%s'\n",

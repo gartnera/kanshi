@@ -10,6 +10,7 @@ enum kanshi_output_field {
 	KANSHI_OUTPUT_POSITION = 1 << 2,
 	KANSHI_OUTPUT_SCALE = 1 << 3,
 	KANSHI_OUTPUT_TRANSFORM = 1 << 4,
+	KANSHI_OUTPUT_ADAPTIVE_SYNC = 1 << 5,
 };
 
 struct kanshi_profile_output {
@@ -27,6 +28,7 @@ struct kanshi_profile_output {
 	} position;
 	float scale;
 	enum wl_output_transform transform;
+	bool adaptive_sync;
 };
 
 struct kanshi_profile_command {

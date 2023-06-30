@@ -111,6 +111,9 @@ quoted (with *"*) if they contain spaces.
 	or "flipped", "flipped-90", "flipped-180", "flipped-270" for a rotation and
 	a flip; or "normal" for no transform.
 
+*adaptive_sync* on|off
+	Enables or disables adaptive synchronization (aka. Variable Refresh Rate).
+
 # AUTHORS
 
 Maintained by Simon Ser <contact@emersion.fr>, who is assisted by other

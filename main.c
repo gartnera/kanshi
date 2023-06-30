@@ -299,6 +299,10 @@ static void apply_profile(struct kanshi_state *state,
 			zwlr_output_configuration_head_v1_set_transform(config_head,
 				profile_output->transform);
 		}
+		if (profile_output->fields & KANSHI_OUTPUT_ADAPTIVE_SYNC) {
+			zwlr_output_configuration_head_v1_set_adaptive_sync(config_head,
+				profile_output->adaptive_sync);
+		}
 	}
 
 	zwlr_output_configuration_v1_apply(config);
@@ -460,6 +464,12 @@ void head_handle_serial_number(void *data,
 	head->serial_number = strdup(serial_number);
 }
 
+static void head_handle_adaptive_sync(void *data,
+		struct zwlr_output_head_v1 *zwlr_output_head_v1, uint32_t state) {
+	struct kanshi_head *head = data;
+	head->adaptive_sync = state;
+}
+
 static const struct zwlr_output_head_v1_listener head_listener = {
 	.name = head_handle_name,
 	.description = head_handle_description,
@@ -474,6 +484,7 @@ static const struct zwlr_output_head_v1_listener head_listener = {
 	.make = head_handle_make,
 	.model = head_handle_model,
 	.serial_number = head_handle_serial_number,
+	.adaptive_sync = head_handle_adaptive_sync,
 };
 
 static void output_manager_handle_head(void *data,
@@ -542,8 +553,8 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
 
 	if (strcmp(interface, zwlr_output_manager_v1_interface.name) == 0) {
 		uint32_t bind_version = 2;
-		if (version >= 3) {
-			bind_version = 3;
+		if (version >= 4) {
+			bind_version = 4;
 		}
 		state->output_manager = wl_registry_bind(registry, name,
 			&zwlr_output_manager_v1_interface, bind_version);

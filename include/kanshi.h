@@ -38,6 +38,7 @@ struct kanshi_head {
 	int32_t x, y;
 	enum wl_output_transform transform;
 	double scale;
+	bool adaptive_sync;
 };
 
 struct kanshi_state {
