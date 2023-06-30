@@ -64,7 +64,7 @@ endif
 executable(
 	meson.project_name(),
 	kanshi_srcs,
-	include_directories: include_directories('include'),
+	include_directories: 'include',
 	dependencies: kanshi_deps,
 	install: true,
 )
@@ -76,7 +76,7 @@ if varlink.found()
 			'ctl.c',
 			'ipc-addr.c',
 		),
-		include_directories: include_directories('include'),
+		include_directories: 'include',
 		dependencies: [varlink],
 		install: true,
 	)
