@@ -555,6 +555,8 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
 		uint32_t bind_version = 2;
 		if (version >= 4) {
 			bind_version = 4;
+		} else if (version > bind_version) {
+			bind_version = version;
 		}
 		state->output_manager = wl_registry_bind(registry, name,
 			&zwlr_output_manager_v1_interface, bind_version);
