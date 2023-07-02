@@ -25,6 +25,8 @@ static long handle_call_done(VarlinkConnection *connection, const char *error,
 			fprintf(stderr, "Profile not found\n");
 		} else if (strcmp(error, "fr.emersion.kanshi.ProfileNotMatched") == 0) {
 			fprintf(stderr, "Profile does not match the current output configuration\n");
+		} else if (strcmp(error, "fr.emersion.kanshi.ProfileNotApplied") == 0) {
+			fprintf(stderr, "Profile could not be applied by the compositor\n");
 		} else {
 			fprintf(stderr, "Error: %s\n", error);
 		}

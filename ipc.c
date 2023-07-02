@@ -20,26 +20,19 @@ static long reply_error(VarlinkCall *call, const char *name) {
 	return ret;
 }
 
-static void reload_config_done(void *data, struct wl_callback *callback,
-		uint32_t serial) {
+static void apply_profile_done(void *data, bool success) {
 	VarlinkCall *call = data;
-	varlink_call_reply(call, NULL, 0);
-	wl_callback_destroy(callback);
+	if (success) {
+		varlink_call_reply(call, NULL, 0);
+	} else {
+		reply_error(call, "fr.emersion.kanshi.ProfileNotApplied");
+	}
 }
-
-static struct wl_callback_listener reload_config_listener = {
-	.done = reload_config_done
-};
 
 static long handle_reload(VarlinkService *service, VarlinkCall *call,
 		VarlinkObject *parameters, uint64_t flags, void *userdata) {
 	struct kanshi_state *state = userdata;
-	kanshi_reload_config(state);
-	// this only ensures that the server has received the configuration request,
-	// the server is free to wait an arbitrary amount of time before applying the configuration
-	// TODO: use the wlr-output-management event instead
-	struct wl_callback *callback = wl_display_sync(state->display);
-	wl_callback_add_listener(callback, &reload_config_listener, call);
+	kanshi_reload_config(state, apply_profile_done, call);
 	return 0;
 }
 
@@ -64,13 +57,10 @@ static long handle_switch(VarlinkService *service, VarlinkCall *call,
 		return reply_error(call, "fr.emersion.kanshi.ProfileNotFound");
 	}
 
-	if (!kanshi_switch(state, profile)) {
+	if (!kanshi_switch(state, profile, apply_profile_done, call)) {
 		return reply_error(call, "fr.emersion.kanshi.ProfileNotMatched");
 	}
 
-	// TODO: use the wlr-output-management event instead
-	struct wl_callback *callback = wl_display_sync(state->display);
-	wl_callback_add_listener(callback, &reload_config_listener, call);
 	return 0;
 }
 
@@ -109,7 +99,8 @@ int kanshi_init_ipc(struct kanshi_state *state, int listen_fd) {
 		"method Reload() -> ()\n"
 		"method Switch(profile: string) -> ()\n"
 		"error ProfileNotFound()\n"
-		"error ProfileNotMatched()\n";
+		"error ProfileNotMatched()\n"
+		"error ProfileNotApplied()\n";
 
 	long result = varlink_service_add_interface(service, interface,
 			"Reload", handle_reload, state,

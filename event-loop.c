@@ -150,7 +150,7 @@ int kanshi_main_loop(struct kanshi_state *state) {
 				}
 				switch (signum) {
 				case SIGHUP:
-					kanshi_reload_config(state);
+					kanshi_reload_config(state, NULL, NULL);
 					break;
 				default:
 					/* exiting after signal considered successful */

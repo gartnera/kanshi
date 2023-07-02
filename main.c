@@ -20,7 +20,8 @@
 
 #define HEADS_MAX 64
 
-static bool match_and_apply(struct kanshi_state *state);
+static bool match_and_apply(struct kanshi_state *state,
+	kanshi_apply_done_func callback, void *data);
 
 static bool match_profile_output(struct kanshi_profile_output *output,
 		struct kanshi_head *head) {
@@ -150,6 +151,9 @@ static void config_handle_succeeded(void *data,
 	if (profile == state->pending_profile) {
 		state->pending_profile = NULL;
 	}
+	if (pending->callback != NULL) {
+		pending->callback(pending->callback_data, true);
+	}
 	free(pending);
 }
 
@@ -161,6 +165,9 @@ static void config_handle_failed(void *data,
 			pending->profile->name);
 	if (pending->profile == pending->state->pending_profile) {
 		pending->state->pending_profile = NULL;
+	}
+	if (pending->callback != NULL) {
+		pending->callback(pending->callback_data, false);
 	}
 	free(pending);
 }
@@ -178,7 +185,10 @@ static void config_handle_cancelled(void *data,
 	if (pending->serial != pending->state->serial) {
 		// We've already received a new serial, try re-applying the profile
 		// immediately
-		match_and_apply(pending->state);
+		match_and_apply(pending->state, NULL, NULL);
+	}
+	if (pending->callback != NULL) {
+		pending->callback(pending->callback_data, false);
 	}
 	free(pending);
 }
@@ -231,8 +241,12 @@ static struct kanshi_mode *match_mode(struct kanshi_head *head,
 }
 
 static bool apply_profile(struct kanshi_state *state,
-		struct kanshi_profile *profile, struct kanshi_profile_output **matches) {
+		struct kanshi_profile *profile, struct kanshi_profile_output **matches,
+		kanshi_apply_done_func callback, void *data) {
 	if (state->pending_profile == profile || state->current_profile == profile) {
+		if (callback != NULL) {
+			callback(data, true);
+		}
 		return true;
 	}
 
@@ -242,6 +256,8 @@ static bool apply_profile(struct kanshi_state *state,
 	pending->serial = state->serial;
 	pending->state = state;
 	pending->profile = profile;
+	pending->callback = callback;
+	pending->callback_data = data;
 	state->pending_profile = profile;
 
 	struct zwlr_output_configuration_v1 *config =
@@ -503,36 +519,42 @@ static void output_manager_handle_head(void *data,
 	zwlr_output_head_v1_add_listener(wlr_head, &head_listener, head);
 }
 
-static bool match_and_apply(struct kanshi_state *state) {
+static bool match_and_apply(struct kanshi_state *state,
+		kanshi_apply_done_func callback, void *data) {
 	assert(wl_list_length(&state->heads) <= HEADS_MAX);
 	// matches[i] gives the kanshi_profile_output for the i-th head
 	struct kanshi_profile_output *matches[HEADS_MAX];
 	if (state->current_profile != NULL &&
 			match_profile(state, state->current_profile, matches)) {
-		return true; // keep the current profile if it still matches
+		// keep the current profile if it still matches
+		if (callback != NULL) {
+			callback(data, true);
+		}
+		return true;
 	}
 	struct kanshi_profile *profile = match(state, matches);
 	if (profile != NULL) {
-		return apply_profile(state, profile, matches);
+		return apply_profile(state, profile, matches, callback, data);
 	}
 	fprintf(stderr, "no profile matched\n");
 	return false;
 }
 
-bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile) {
+bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile,
+		kanshi_apply_done_func callback, void *data) {
 	struct kanshi_profile_output *matches[HEADS_MAX];
 	if (!match_profile(state, profile, matches)) {
 		return false;
 	}
 
-	return apply_profile(state, profile, matches);
+	return apply_profile(state, profile, matches, callback, data);
 }
 
 static void output_manager_handle_done(void *data,
 		struct zwlr_output_manager_v1 *manager, uint32_t serial) {
 	struct kanshi_state *state = data;
 	state->serial = serial;
-	match_and_apply(state);
+	match_and_apply(state, NULL, NULL);
 }
 
 static void output_manager_handle_finished(void *data,
@@ -618,17 +640,18 @@ static void destroy_config(struct kanshi_config *config) {
 	free(config);
 }
 
-bool kanshi_reload_config(struct kanshi_state *state) {
+bool kanshi_reload_config(struct kanshi_state *state,
+		kanshi_apply_done_func callback, void *data) {
 	fprintf(stderr, "reloading config\n");
 	struct kanshi_config *config = read_config(state->config_arg);
-	if (config != NULL) {
-		destroy_config(state->config);
-		state->config = config;
-		state->pending_profile = NULL;
-		state->current_profile = NULL;
-		return match_and_apply(state);
+	if (config == NULL) {
+		return false;
 	}
-	return false;
+	destroy_config(state->config);
+	state->config = config;
+	state->pending_profile = NULL;
+	state->current_profile = NULL;
+	return match_and_apply(state, callback, data);
 }
 
 static const char usage[] = "Usage: %s [options...]\n"

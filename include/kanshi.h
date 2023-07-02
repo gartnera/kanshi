@@ -58,14 +58,21 @@ struct kanshi_state {
 	struct kanshi_profile *pending_profile;
 };
 
+typedef void (*kanshi_apply_done_func)(void *data, bool success);
+
 struct kanshi_pending_profile {
 	uint32_t serial;
 	struct kanshi_state *state;
 	struct kanshi_profile *profile;
+
+	kanshi_apply_done_func callback;
+	void *callback_data;
 };
 
-bool kanshi_reload_config(struct kanshi_state *state);
-bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile);
+bool kanshi_reload_config(struct kanshi_state *state,
+	kanshi_apply_done_func callback, void *data);
+bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile,
+	kanshi_apply_done_func callback, void *data);
 
 int kanshi_main_loop(struct kanshi_state *state);
 
