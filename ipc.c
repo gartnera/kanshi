@@ -32,7 +32,9 @@ static void apply_profile_done(void *data, bool success) {
 static long handle_reload(VarlinkService *service, VarlinkCall *call,
 		VarlinkObject *parameters, uint64_t flags, void *userdata) {
 	struct kanshi_state *state = userdata;
-	kanshi_reload_config(state, apply_profile_done, call);
+	if (!kanshi_reload_config(state, apply_profile_done, call)) {
+		return reply_error(call, "fr.emersion.kanshi.ProfileNotMatched");
+	}
 	return 0;
 }
 
