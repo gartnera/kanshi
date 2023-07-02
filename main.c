@@ -701,7 +701,10 @@ int main(int argc, char *argv[]) {
 
 	struct wl_registry *registry = wl_display_get_registry(display);
 	wl_registry_add_listener(registry, &registry_listener, &state);
-	wl_display_roundtrip(display);
+	if (wl_display_roundtrip(display) < 0) {
+		fprintf(stderr, "wl_display_roundtrip() failed\n");
+		return EXIT_FAILURE;
+	}
 
 	if (state.output_manager == NULL) {
 		fprintf(stderr, "compositor doesn't support "
