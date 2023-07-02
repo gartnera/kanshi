@@ -49,7 +49,7 @@ static int set_blocking(int fd) {
 	return 0;
 }
 
-int wait_for_event(VarlinkConnection *connection) {
+static int wait_for_event(VarlinkConnection *connection) {
 	int fd = varlink_connection_get_fd(connection);
 	if (set_blocking(fd) != 0) {
 		return -1;
