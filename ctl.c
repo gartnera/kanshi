@@ -15,7 +15,7 @@ static void usage(void) {
 		"\n"
 		"Commands:\n"
 		"  reload            Reload the configuration file\n"
-		"  switch <profile>  Switch to another profile");
+		"  switch <profile>  Switch to another profile\n");
 }
 
 static long handle_call_done(VarlinkConnection *connection, const char *error,
