@@ -230,11 +230,10 @@ static struct kanshi_mode *match_mode(struct kanshi_head *head,
 	return last_match;
 }
 
-static void apply_profile(struct kanshi_state *state,
-		struct kanshi_profile *profile,
-		struct kanshi_profile_output **matches) {
+static bool apply_profile(struct kanshi_state *state,
+		struct kanshi_profile *profile, struct kanshi_profile_output **matches) {
 	if (state->pending_profile == profile || state->current_profile == profile) {
-		return;
+		return true;
 	}
 
 	fprintf(stderr, "applying profile '%s'\n", profile->name);
@@ -306,10 +305,12 @@ static void apply_profile(struct kanshi_state *state,
 	}
 
 	zwlr_output_configuration_v1_apply(config);
-	return;
+	return true;
 
 error:
+	free(pending);
 	zwlr_output_configuration_v1_destroy(config);
+	return false;
 }
 
 
@@ -512,8 +513,7 @@ static bool match_and_apply(struct kanshi_state *state) {
 	}
 	struct kanshi_profile *profile = match(state, matches);
 	if (profile != NULL) {
-		apply_profile(state, profile, matches);
-		return true;
+		return apply_profile(state, profile, matches);
 	}
 	fprintf(stderr, "no profile matched\n");
 	return false;
@@ -525,8 +525,7 @@ bool kanshi_switch(struct kanshi_state *state, struct kanshi_profile *profile) {
 		return false;
 	}
 
-	apply_profile(state, profile, matches);
-	return true;
+	return apply_profile(state, profile, matches);
 }
 
 static void output_manager_handle_done(void *data,
